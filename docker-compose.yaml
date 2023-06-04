@@ -1,0 +1,87 @@
+---
+version: '3.8'
+
+x-extra_hosts: &extra_hosts
+  extra_hosts:
+    - "db:172.20.0.4"
+    - "backend:172.20.0.5"
+    - "frontend:172.20.0.6"
+
+services:
+  db:
+    <<: *extra_hosts
+    image: postgres
+    # expose:
+    #   - "5432"
+    ports:
+      - "5432:5432"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: shipments
+    # volumes:
+    #   - shipment_cmp_pgdata:/var/lib/postgresql/data
+    networks:
+      default:
+        ipv4_address: 172.20.0.4
+
+  backend:
+    <<: *extra_hosts
+    container_name: backend
+    build:
+      context: .
+      dockerfile: shipments_backend/Dockerfile
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py seed_directions &&
+             python manage.py seed_transporters &&
+             python manage.py seed_shipments &&
+             python manage.py runserver 0.0.0.0:8000"
+    # command: python manage.py migrate ;python manage.py seed_directions ;python manage.py seed_transporters ;python manage.py seed_shipments; python manage.py runserver
+    stdin_open: true
+    environment:
+     - PYTHONUNBUFFERED=1
+     - DB_NAME=shipments
+     - DB_USER=postgres
+     - DB_PASSWORD=postgres
+     - DB_HOST=db
+     - DB_PORT=5432
+    # restart: always
+    tty: true
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    networks:
+      default:
+        ipv4_address: 172.20.0.5
+    depends_on:
+      - db
+
+  frontend:
+    <<: *extra_hosts
+    container_name: front
+    build:
+      context: .
+      dockerfile: shipments_front/Dockerfile
+    stdin_open: true
+    tty: true
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    networks:
+      default:
+        ipv4_address: 172.20.0.6
+    depends_on:
+      - db
+# volumes:
+#   shipment_cmp_pgdata: {}
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.20.0.0/24"
