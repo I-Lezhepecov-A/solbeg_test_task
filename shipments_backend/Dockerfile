@@ -4,10 +4,9 @@ ENV PYTHONUNBUFFERED 1
 WORKDIR /opt/app
 COPY shipments_backend/requirements.txt /tmp/
 # COPY .env /tmp/
-RUN apt update 
-RUN pip install --upgrade pip
-RUN ls /tmp/
-RUN pip install -r /tmp/requirements.txt 
+RUN apt update && \
+    pip install --upgrade pip && \
+    pip install -r /tmp/requirements.txt
 
 COPY shipments_backend /opt/app
 # COPY . .
